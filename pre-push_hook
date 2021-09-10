@@ -1,0 +1,20 @@
+#!/bin/bash -e
+
+#grab all the changed modules from git
+modules=$(git status | grep -E 'modified:|deleted:|added:' | awk '{print $2}' | cut -f1 -d'/' | sort -u)
+
+if echo "$modules" | grep -q 'pom.xml'; then
+    mvn clean install && exit 0
+    exit 1
+fi
+
+#replace all spaces by commas (needed for mvn command)
+modules=$(echo "$modules" | grep '/' | awk -v OFS=',' '$1=$1')
+
+if [  -z "$modules" ]; then
+    echo 'No changes (modified / deleted / added) found'
+else
+    echo 'Changed modules are: '"$modules"
+    #compile all the changed modules along with their dependencies but test only modules with changes
+    mvn clean install -DskipTests -amd -pl "$modules" && mvn test -pl "$modules"
+fi
